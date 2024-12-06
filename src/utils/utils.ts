@@ -133,3 +133,10 @@ export function createElement<
     }
     return element;
 }
+
+/**
+ * Форматирует число с разделителями тысяч
+ */
+export function formatNumber(value: number): string {
+	return value.toLocaleString('ru-RU'); // Пример: 10000 → "10 000"
+}
