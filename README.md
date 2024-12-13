@@ -45,7 +45,7 @@ yarn build
 
 Тип продукта:
 ```
-interface IProduct {
+export interface IProductItem {
   id: string;
   title: string;
   category: string;
@@ -55,69 +55,61 @@ interface IProduct {
 }
 ```
 
-Элемент корзины
+Состояние приложения:
 ```
-interface IBasketItem {
-  product: IProduct;
-  quantity: number;
+
+export interface IAppState {
+  catalog: IProductItem[];
+  preview: string; // ID выбранного для предпросмотра продукта
+  basket: string[]; // список ID продуктов в корзине
+  order: IOrder;    // данные текущего заказа
+  total: number;    // итог, вычисляемый из позиций в корзине
+  loading: boolean; // признак того, что данные сейчас загружаются
 }
 ```
 
-Корзина
+Данные формы заказа:
 ```
-interface IBasket {
-  items: IBasketItem[];
-  total: number;
+
+export interface IOrderForm {
+  payment?: string;
+  address?: string;
+  phone?: string;
+  email?: string;
+  total?: number;
 }
 ```
 
-Данные пользователя
+Данные заказа:
 ```
-interface IUser {
-  email: string;
-  phone: string;
-  address: string;
-  paymentMethod: string;
-}
-```
-Данные заказа
-```
-interface IOrderData {
-  items: IBasketItem[];
-  total: number;
-  user: IUser;
-}
 
-```
-Данные формы контактов
-```
-interface IContactFormData {
-  email: string;
-  phone: string;
-}
-```
-Данные формы заказа
-```
-interface IOrderFormData {
-  paymentMethod: string;
-  address: string;
+export interface IOrder extends IOrderForm {
+  items: string[]; // ID продуктов
 }
 ```
 
+Результат заказа:
 ```
-interface IOrderResult {
-  orderId: string;
-  status: string;
-  message: string;
+
+export interface IOrderResult {
+  id: string;
 }
+```
+
+Ошибки формы:
+```
+
+export type FormErrors = Partial<Record<keyof IOrder, string>>;
 ```
 
 
 ## Архитектура приложения
-Код приложения разделен на слои согласно парадигме MVP:
+В проекте код приложения разделен на слои согласно парадигме MVP:
 - слой представления, отвечает за отображение данных на странице,
 - слой данных, отвечает за хранение и изменение данных
 - презентер, отвечает за связь представления и данных.
+
+Также используется событийно-ориентированный подход.
 
 ## Базовый код
 
@@ -135,181 +127,348 @@ interface IOrderResult {
 - emit - инициализация события
 - trigger - возвращает функцию, при вызове которой инициализируется требуемое в параметрах событие
 
-## Слой представления:
-
-## Базовый Класс Component
-Базовый класс Component
-Назначение: Базовый класс для всех компонентов пользовательского интерфейса.
-constructor(protected container: HTMLElement)
+## Абстрактный класс Component<T>
+Базовый класс для всех компонентов пользовательского интерфейса.
 Методы:
-render(data?: any): void: Метод для рендеринга компонента.
-clear(): void: Очищает содержимое контейнера.
 
-## Класс View
-Расширяет Component, добавляя поддержку событий.
-constructor(container: HTMLElement, protected events: EventEmitter)
+```constructor(protected container: HTMLElement)```
+Инициализирует компонент с указанным контейнером HTMLElement.
+
+```toggleClass(element: HTMLElement, className: string, force?: boolean): void```
+Переключает класс className на элементе element.
+Параметр force позволяет явно установить или снять класс:
+true — добавить класс.
+false — удалить класс.
+undefined — переключить класс (если есть — удалить, если нет — добавить).
+
+```setDisabled(element: HTMLElement, state: boolean): void```
+Устанавливает или снимает атрибут disabled у элемента element в зависимости от значения state:
+true — добавляет атрибут disabled.
+false — удаляет атрибут disabled.
+
+```protected setText(element: HTMLElement, value: unknown): void```
+Устанавливает текстовое содержимое элемента element значением value, преобразованным в строку.
+
+```protected setImage(element: HTMLImageElement, src: string, alt?: string): void```
+Устанавливает изображение для элемента img:
+src — путь к изображению.
+alt — альтернативный текст (опционально).
+
+```render(data?: Partial<T>): HTMLElement```
+Рендерит компонент, обновляя его свойства данными из data, если они предоставлены.
+Возвращает контейнер компонента HTMLElement.
+
+## Абстрактный класс Model
+Базовый класс для моделей данных.
+```constructor(data: Partial<T>, protected events: IEvents)```
+
+```data``` — Начальные данные модели.
+
+```events``` — Экземпляр EventEmitter для генерации событий при изменении данных.
+Методы:
+
+```emitChanges(event: string, payload?: object): void ``` — Генерирует событие об изменении данных.
+
+## Компоненты модели данных
+
+## Класс LarekApi
+Этот класс расширяет базовый класс Api и добавляет специфические методы для взаимодействия с API
+
+Список методов класса LarekApi:
+
+```constructor(cdnUrl: string, baseUrl: string, options?: RequestInit)```
+
+Инициализирует экземпляр класса, устанавливая URL CDN и базовый URL API.
+```fetchProductList(): Promise<IProductItem[]>```
+
+Получает список продуктов с сервера.
+
+```submitOrder(orderData: IOrder): Promise<IOrderResult>```
+
+Отправляет заказ на сервер.
+
+## AppData (Модель данных приложения)
+
+Описание:
+
+Хранит состояние приложения, управляет каталогом, корзиной и заказами.
+
+Методы:
+setCatalog(items: IProductItem[]): void
+Загружает список продуктов в модель.
+
+Параметры:
+
+items: IProductItem[] — Массив продуктов.
+
+addToOrder(product: Product): void
+
+Добавляет продукт в список товаров заказа.
+Параметры:
+
+product: Product — Продукт для добавления.
+clearBasket(): void
+Очищает корзину и список товаров заказа.
+
+validateOrder(): boolean
+Проверяет валидность данных заказа.
+Возвращает:
+
+boolean — true, если все данные валидны, иначе false.
+getTotal(): number
+Рассчитывает общую стоимость товаров в корзине.
+Возвращает:
+
+number — Общая сумма.
+
+## Класс Product
+
+Основная функциональность класса Product
+
+Класс описывает свойства каждого продукта, такие как идентификатор, название, описание, цена и изображение.
+
+Интеграция с EventEmitter Класс принимает в конструкторе экземпляр EventEmitter, который позволяет объектам генерировать события для взаимодействия с другими частями приложения.
+
+Управление данными С помощью конструктора объект Product наполняется данными из интерфейса IProductItem.
+
+Основные свойства
+id: string
+Уникальный идентификатор продукта, используется для операций с продуктом (например, добавления в корзину).
+
+title: string
+Название продукта, отображается в карточке товара.
+
+description: string
+Описание продукта, используется в подробном просмотре продукта.
+
+category: string
+Категория продукта, которая может быть использована для фильтрации.
+
+image: string
+Ссылка на изображение продукта.
+
+price: number | null
+Цена продукта. Если значение null, отображается как "Бесценно".
 
 
 ## Компоненты представления
 
-## Класс ProductCard
+## Класс Card
 Отображает карточку товара и обрабатывает действия пользователя.
 
-Методы:
-render(product: IProduct): void: Отображает данные товара.
-updateButtonState(isInBasket: boolean, isPriceless: boolean): void: Обновляет состояние кнопки "В корзину".
-События:
-Эмитирует 'product:selected' при выборе товара.
-Эмитирует 'product:addToBasket' при добавлении товара в корзину.
+Конструктор:
 
-## Класс BasketView
+```constructor(container: HTMLElement, actions?: ICardActions)```
+
+```container``` — HTML-элемент контейнера карточки.
+
+```actions``` — Обработчики событий (onSelect, onAdd, onRemove).
+
+Методы и свойства:
+
+```title``` — Устанавливает заголовок карточки.
+
+```category``` — Устанавливает категорию товара и соответствующий CSS-класс.
+
+```image``` — Устанавливает изображение товара.
+
+```price``` — Устанавливает цену товара.
+
+## Класс CardPreview
+Класс CardPreview наследует все методы и свойства базового класса Card, что позволяет использовать их без необходимости повторного определения. 
+
+```constructor(container: HTMLElement, actions?: ICardActions)```
+
+Параметры:
+
+```container: HTMLElement``` — контейнер карточки товара в DOM.
+
+```actions: ICardActions``` — объект, содержащий обработчики событий для карточки (onSelect, onAdd, onRemove).
+
+Методы
+
+```set text(content: string)```
+
+Описание:
+
+Сеттер для установки текста описания товара.
+Использует защищённый метод setText из родительского класса Component для обновления содержимого textElement
+
+```set addButtonEnabled(isEnabled: boolean)```
+
+Описание:
+
+Сеттер для управления доступностью кнопки добавления в корзину.
+Принимает булевый параметр isEnabled, который определяет, должна ли кнопка быть активной.
+Использует метод setDisabled из родительского класса Component для установки атрибута disabled у кнопки.
+
+
+```updateButtonState(isInBasket: boolean, isPriceless: boolean): void```
+
+Описание:
+
+Метод для обновления состояния кнопки добавления в корзину в зависимости от текущего состояния товара.
+
+```isInBasket```: указывает, находится ли товар уже в корзине.
+
+```isPriceless```: указывает, имеет ли товар цену.
+
+Логика:
+Если товар бесценен (isPriceless), кнопка отображает текст "Бесценно" и отключается.
+Если товар уже в корзине (isInBasket), кнопка отображает текст "В корзине" и отключается.
+В противном случае, кнопка отображает текст "В корзину" и становится активной.
+
+## Класс CardBasket
+Отображает товар в корзине и позволяет его удалить.
+
+Конструктор:
+
+```constructor(container: HTMLElement, actions?: ICardActions)```
+
+Методы и свойства:
+
+```title``` — Устанавливает заголовок товара.
+```price``` — Устанавливает цену товара.
+```index``` — Устанавливает индекс товара в списке корзины.
+
+## Класс Basket
 Отображает содержимое корзины и обрабатывает действия пользователя.
 
 Методы:
-render(basket: IBasket): void: Отображает товары в корзине.
-toggleCheckoutButton(isEnabled: boolean): void: Включает/отключает кнопку оформления заказа.
-События:
-Эмитирует 'basket:removeItem' при удалении товара.
-Эмитирует 'basket:checkout' при нажатии на кнопку оформления заказа.
 
-## Класс OrderForm
+```render(basket: IBasket): void```  — Отображает товары в корзине.
+```toggleCheckoutButton(isEnabled: boolean): void``` — Включает/отключает кнопку оформления заказа.
+
+События:
+
+Эмитирует ```'basket:removeItem'``` при удалении товара.
+Эмитирует ```'basket:checkout'``` при нажатии на кнопку оформления заказа.
+
+## Класс Order
 Форма оформления заказа.
 
-Методы:
-render(data?: IOrderFormData): void: Отображает форму заказа.
-validate(): boolean: Проверяет валидность введенных данных.
-getData(): IOrderFormData: Возвращает данные формы.
-События:
-Эмитирует 'orderForm:submit' при отправке формы.
+Конструктор:
 
-## Класс ContactForm
+ ```constructor(formElement: HTMLFormElement, eventBus: IEvents) ```
+
+Методы:
+
+ ```render(data?: IOrderFormData): void ``` — Отображает форму заказа.
+ ```getData(): IOrderFormData ```  — Возвращает данные формы.
+События:
+
+Эмитирует  ```'orderForm:submit' ``` при отправке формы.
+
+## Класс Contacts
 Форма ввода контактных данных.
 
+Конструктор:
+
+ ```constructor(formElement: HTMLFormElement, eventBus: IEvents) ```
+
 Методы:
-render(data?: IContactFormData): void: Отображает форму контактов.
-validate(): boolean: Проверяет валидность введенных данных.
-getData(): IContactFormData: Возвращает данные формы.
+
+ ```render(data?: IContactFormData): void ``` — Отображает форму контактов.
+ ```getData(): IContactFormData ``` — Возвращает данные формы.
+
 События:
+
 Эмитирует 'contactForm:submit' при отправке формы.
 
-## Класс SuccessView
+## Класс Success
 Отображает сообщение об успешном оформлении заказа.
 
-Методы:
-render(message: string): void: Отображает сообщение об успехе.
+### Методы:
 
-## Класс MainPage
-Управляет отображением главной страницы и каталога товаров.
 
-Методы:
-render(products: IProduct[]): void: Отображает список товаров.
-updateBasketCounter(count: number): void: Обновляет счетчик товаров в корзине.
-События:
-Эмитирует 'basket:open' при нажатии на кнопку корзины.
+- **constructor(container: HTMLElement, actions: ISuccessActions)**
+Инициализирует компонент Success, устанавливая ссылки на необходимые DOM-элементы и добавляя обработчик события клика на кнопку закрытия сообщения об успехе.
 
-## Класс Modal 
-Управляет модальными окнами.
+- **set total**
+set total(amount: string)
+Обновляет текстовое содержимое элемента totalElement, отображая сумму списанных средств пользователю.
 
-Методы:
-open(content: HTMLElement): void: Открывает модальное окно.
-close(): void: Закрывает модальное окно.
-События:
-Эмитирует 'modal:opened' и 'modal:closed'.
+## Класс Modal
 
-## Класс Form
-Базовый класс для форм.
+Управляет модальными окнами в приложении.
 
-Методы:
-render(data?: any): void: Метод для рендеринга формы.
-validate(): boolean: Проверяет валидность формы.
-getData(): any: Возвращает данные формы.
+### Методы:
 
-## Слой данных
-## Класс ProductModel
-Управляет данными товаров.
+- **open**
+    ```typescript
+    open(): void
+    ```
+    Открывает модальное окно и генерирует событие `modal:open`.
 
-Методы:
-async loadProducts(): Promise<void>: Загружает список товаров с сервера.
-getProducts(): IProduct[]: Возвращает список товаров.
-getProductById(id: string): IProduct | undefined: Возвращает товар по ID.
-События:
-Эмитирует 'products:loaded' после загрузки товаров.
+- **close**
+    ```typescript
+    close(): void
+    ```
+    Закрывает модальное окно, очищает содержимое и генерирует событие `modal:close`.
 
-## Класс BasketModel
-Управляет данными корзины.
+- **render**
+    ```typescript
+    render(data: IModalContent): HTMLElement
+    ```
+    Отображает переданный контент внутри модального окна и открывает его.
 
-Поля:
 
-private basket: IBasket — Текущая корзина.
-Методы:
 
-addToBasket(product: IProduct): void — Добавляет товар в корзину.
-removeFromBasket(productId: string): void — Удаляет товар из корзины.
-clearBasket(): void — Очищает корзину.
-getBasket(): IBasket — Возвращает текущую корзину.
-События:
 
-Эмитирует 'basket:updated' при изменении корзины.
 
-## Класс OrderModel
-Поля:
+```markdown
+## Основные события
 
-private orderData: IOrderData — Данные текущего заказа.
-Методы:
+### События от моделей:
 
-setOrderData(data: IOrderData): void — Устанавливает данные заказа.
-validateOrder(): boolean — Проверяет валидность заказа.
-async submitOrder(): Promise<void> — Отправляет заказ на сервер.
-События:
+- **`products:loaded`**
+    - **Описание:** Генерируется после загрузки списка товаров.
+    - **Параметры:** `IProductItem[]` — массив загруженных товаров.
 
-Эмитирует 'order:validated' или 'order:invalid' после валидации.
-Эмитирует 'order:submitted' после отправки заказа.
+- **`basket:updated`**
+    - **Описание:** Генерируется при изменении содержимого корзины.
+    - **Параметры:** `IProductItem[]` — обновленный список товаров в корзине.
 
-## Класс WebLarekApi 
-Расширяет класс Api, предоставляя методы для работы с API проекта.
-Конструктор:
-constructor(baseUrl: string, cdnUrl: string, options?: RequestInit) — Принимает URL сервера, URL CDN для изображений и опции запросов.
-Методы:
+- **`order:validated`**
+    - **Описание:** Генерируется при успешной валидации данных заказа.
+    - **Параметры:** `IOrder` — данные заказа.
 
-async getProductList(): Promise<IProduct[]>: Получает список товаров.
-async getProduct(id: string): Promise<IProduct>: Получает товар по ID.
-async createOrder(order: IOrderData): Promise<any>: Создает новый заказ.
-getImageUrl(imagePath: string): string: Возвращает полный URL изображения.
+- **`order:invalid`**
+    - **Описание:** Генерируется при ошибке валидации данных заказа.
+    - **Параметры:** `FormErrors` — объект с ошибками валидации.
 
-## Презентер 
-## Класс AppPresenter 
-Отвечает за взаимодействие между моделями и представлениями, описывает логику приложения.
+- **`order:submitted`**
+    - **Описание:** Генерируется после успешной отправки заказа на сервер.
+    - **Параметры:** `IOrderResult` — результат заказа.
 
-Поля:
-productModel: ProductModel
-basketModel: BasketModel
-orderModel: OrderModel
-mainPage: MainPage
-modal: Modal
+### События от представлений:
 
-Методы обработки событий:
+- **`product:selected`**
+    - **Описание:** Генерируется при выборе товара.
+    - **Параметры:** `IProductItem` — выбранный товар.
 
-handleAddToBasket(product: IProduct): void — Обрабатывает добавление товара в корзину.
-handleBasketUpdated(basket: IBasket): void — Обрабатывает обновление корзины.
-handleOrderFormSubmitted(data: IOrderFormData): void — Обрабатывает отправку формы заказа.
-handleContactFormSubmitted(data: IContactFormData): void — Обрабатывает отправку формы контактов.
-handleOrderSubmitted(result: IOrderResult): void — Обрабатывает результат отправки заказа.
-handleProductSelected(product: IProduct): void — Обрабатывает выбор товара для просмотра деталей.
+- **`product:addToBasket`**
+    - **Описание:** Генерируется при добавлении товара в корзину.
+    - **Параметры:** `IProductItem` — добавленный товар.
 
-## Взаимодействие компонентов и процессы в приложении
-Основные события
-События от моделей
-'products:loaded' — После загрузки списка товаров (ProductModel).
-'basket:updated' — При изменении корзины (BasketModel).
-'order:validated' — При успешной валидации заказа (OrderModel).
-'order:invalid' — При ошибке валидации заказа (OrderModel).
-'order:submitted' — После успешной отправки заказа (OrderModel).
-События от представлений
-'product:selected' — При выборе товара (ProductCard).
-'product:addToBasket' — При добавлении товара в корзину (ProductCard).
-'basket:removeItem' — При удалении товара из корзины (BasketView).
-'basket:checkout' — При переходе к оформлению заказа (BasketView).
-'orderForm:submit' — При отправке формы заказа (OrderForm).
-'contactForm:submit' — При отправке формы контактов (ContactForm).
-'basket:open' — При открытии корзины (MainPage).
-'modal:opened' и 'modal:closed' — При открытии/закрытии модального окна (Modal).
+- **`basket:removeItem`**
+    - **Описание:** Генерируется при удалении товара из корзины.
+    - **Параметры:** `IProductItem` — удаленный товар.
+
+- **`basket:checkout`**
+    - **Описание:** Генерируется при переходе к оформлению заказа.
+    - **Параметры:** `IOrderForm` — данные заказа.
+
+- **`orderForm:submit`**
+    - **Описание:** Генерируется при отправке формы заказа.
+    - **Параметры:** `IOrderForm` — данные формы заказа.
+
+- **`contactForm:submit`**
+    - **Описание:** Генерируется при отправке формы контактных данных.
+    - **Параметры:** `IOrderForm` — данные контактной формы.
+
+- **`basket:open`**
+    - **Описание:** Генерируется при открытии корзины.
+
+- **`modal:opened`** и **`modal:closed`**
+    - **Описание:** Генерируются при открытии и закрытии модального окна соответственно.
