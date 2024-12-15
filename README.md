@@ -41,68 +41,6 @@ npm run build
 yarn build
 ```
 
-## Данные и их типы, которые используются в приложении:
-
-Тип продукта:
-```
-export interface IProductItem {
-  id: string;
-  title: string;
-  category: string;
-  description: string;
-  image: string;
-  price: number | null;
-}
-```
-
-Состояние приложения:
-```
-
-export interface IAppState {
-  catalog: IProductItem[];
-  preview: string; // ID выбранного для предпросмотра продукта
-  basket: string[]; // список ID продуктов в корзине
-  order: IOrder;    // данные текущего заказа
-  total: number;    // итог, вычисляемый из позиций в корзине
-  loading: boolean; // признак того, что данные сейчас загружаются
-}
-```
-
-Данные формы заказа:
-```
-
-export interface IOrderForm {
-  payment?: string;
-  address?: string;
-  phone?: string;
-  email?: string;
-  total?: number;
-}
-```
-
-Данные заказа:
-```
-
-export interface IOrder extends IOrderForm {
-  items: string[]; // ID продуктов
-}
-```
-
-Результат заказа:
-```
-
-export interface IOrderResult {
-  id: string;
-}
-```
-
-Ошибки формы:
-```
-
-export type FormErrors = Partial<Record<keyof IOrder, string>>;
-```
-
-
 ## Архитектура приложения
 В проекте код приложения разделен на слои согласно парадигме MVP:
 - слой представления, отвечает за отображение данных на странице,
@@ -114,141 +52,305 @@ export type FormErrors = Partial<Record<keyof IOrder, string>>;
 ## Базовый код
 
 ## Класс Api
-Содержит в себе базовую логику отправки запросов. В конструктор передается базовый адрес сервера и опциональный объект с заголовками запросов. Методы:
+Содержит в себе базовую логику отправки запросов. В конструктор передается базовый адрес сервера и опциональный объект с заголовками запросов. 
 
-- get - выполняет GET запрос на переданный в параметрах ендпоинт и возвращает промис с объектом, которым ответил сервер
-- post - принимает объект с данными, которые будут переданы в JSON в теле запроса, и отправляет эти данные на ендпоинт переданный как параметр при вызове метода. По умолчанию выполняется POST запрос, но метод запроса может быть переопределен заданием третьего параметра при вызове.
+### Поля класса
+- `baseUrl: string` - базовый URL для API.
+- `options: RequestInit` - параметры для HTTP-запросов.
+
+### Методы класса
+#### Конструктор
+```typescript
+constructor(baseUrl: string, options: RequestInit = {})
+```
+Инициализирует экземпляр API с базовым URL и параметрами запросов.
+
+#### `protected handleResponse(response: Response): Promise<object>`
+```typescript
+protected handleResponse(response: Response): Promise<object>
+```
+Обрабатывает ответ от сервера. Если запрос успешен, возвращает `JSON`, иначе выбрасывает ошибку с описанием.
+
+#### `get(uri: string): Promise<object>`
+```typescript
+get(uri: string): Promise<object>
+```
+Выполняет GET-запрос по указанному URI и возвращает ответ.
+
+#### `post(uri: string, data: object, method: ApiPostMethods = 'POST'): Promise<object>`
+```typescript
+post(uri: string, data: object, method: ApiPostMethods = 'POST'): Promise<object>
+```
+Выполняет POST, PUT или DELETE-запрос по указанному URI с переданными данными и возвращает ответ.
 
 ## Класс EventEmitter
 Брокер событий позволяет отправлять события и подписываться на события, происходящие в системе. Класс используется в презентере для обработки событий и в слоях приложения для генерации событий.
 Основные методы, реализуемые классом описаны интерфейсом IEvents:
 
-- on - подписка на событие
-- emit - инициализация события
-- trigger - возвращает функцию, при вызове которой инициализируется требуемое в параметрах событие
+### Поля класса
+- `_events: Map<EventName, Set<Subscriber>>` - коллекция событий и их подписчиков.
+
+### Методы класса
+#### Конструктор
+```typescript
+constructor()
+```
+Инициализирует экземпляр `EventEmitter` с пустой коллекцией событий.
+
+#### `on<T extends object>(event: EventName, callback: (data: T) => void): void`
+```typescript
+on<T extends object>(event: EventName, callback: (data: T) => void)
+```
+Добавляет обработчик для указанного события.
+
+#### `off(event: EventName, callback: Subscriber): void`
+```typescript
+off(event: EventName, callback: Subscriber)
+```
+Удаляет обработчик для указанного события.
+
+#### `emit<T extends object>(event: string, data?: T): void`
+```typescript
+emit<T extends object>(event: string, data?: T)
+```
+Инициирует событие с переданными данными.
+
+#### `onAll(callback: (event: EmitterEvent) => void): void`
+```typescript
+onAll(callback: (event: EmitterEvent) => void)
+```
+Добавляет обработчик, который слушает все события.
+
+#### `offAll(): void`
+```typescript
+offAll()
+```
+Удаляет все обработчики событий.
+
+#### `trigger<T extends object>(event: string, context?: Partial<T>): (data: T) => void`
+```typescript
+trigger<T extends object>(event: string, context?: Partial<T>): (data: T) => void
+```
+Создаёт функцию, которая инициирует указанное событие при вызове.
 
 ## Абстрактный класс Component<T>
 Базовый класс для всех компонентов пользовательского интерфейса.
-Методы:
 
-```constructor(protected container: HTMLElement)```
-Инициализирует компонент с указанным контейнером HTMLElement.
+### Методы класса
+#### Конструктор
+```typescript
+constructor(protected readonly container: HTMLElement)
+```
+Инициализирует компонент с заданным контейнером. Используется для наследования в конкретных компонентах.
 
-```toggleClass(element: HTMLElement, className: string, force?: boolean): void```
-Переключает класс className на элементе element.
-Параметр force позволяет явно установить или снять класс:
-true — добавить класс.
-false — удалить класс.
-undefined — переключить класс (если есть — удалить, если нет — добавить).
+#### `toggleClass(element: HTMLElement, className: string, force?: boolean): void`
+```typescript
+toggleClass(element: HTMLElement, className: string, force?: boolean)
+```
+Добавляет или удаляет класс у элемента в зависимости от значения `force`.
 
-```setDisabled(element: HTMLElement, state: boolean): void```
-Устанавливает или снимает атрибут disabled у элемента element в зависимости от значения state:
-true — добавляет атрибут disabled.
-false — удаляет атрибут disabled.
+#### `setDisabled(element: HTMLElement, state: boolean): void`
+```typescript
+setDisabled(element: HTMLElement, state: boolean)
+```
+Устанавливает или снимает атрибут `disabled` у элемента в зависимости от значения `state`.
 
-```protected setText(element: HTMLElement, value: unknown): void```
-Устанавливает текстовое содержимое элемента element значением value, преобразованным в строку.
+#### `protected setText(element: HTMLElement, value: unknown): void`
+```typescript
+protected setText(element: HTMLElement, value: unknown)
+```
+Устанавливает текстовое содержимое элемента.
 
-```protected setImage(element: HTMLImageElement, src: string, alt?: string): void```
-Устанавливает изображение для элемента img:
-src — путь к изображению.
-alt — альтернативный текст (опционально).
+#### `protected setImage(element: HTMLImageElement, src: string, alt?: string): void`
+```typescript
+protected setImage(element: HTMLImageElement, src: string, alt?: string)
+```
+Устанавливает `src` и `alt` для изображения.
 
-```render(data?: Partial<T>): HTMLElement```
-Рендерит компонент, обновляя его свойства данными из data, если они предоставлены.
-Возвращает контейнер компонента HTMLElement.
+#### `render(data?: Partial<T>): HTMLElement`
+```typescript
+render(data?: Partial<T>): HTMLElement
+```
+Применяет переданные данные к текущему компоненту и возвращает его контейнер.
 
-## Абстрактный класс Model
+## Абстрактный класс Model<T>
 Базовый класс для моделей данных.
-```constructor(data: Partial<T>, protected events: IEvents)```
 
-```data``` — Начальные данные модели.
+### Методы класса
+#### Конструктор
+```typescript
+constructor(data: Partial<T>, protected events: IEvents)
+```
+Инициализирует модель с данными и событиями, переданными через параметры. Используется для наследования в конкретных моделях.
 
-```events``` — Экземпляр EventEmitter для генерации событий при изменении данных.
-Методы:
-
-```emitChanges(event: string, payload?: object): void ``` — Генерирует событие об изменении данных.
+#### `emitChanges(event: string, payload?: object): void`
+```typescript
+emitChanges(event: string, payload?: object)
+```
+Вызывает событие с указанным именем и данными.
 
 ## Компоненты модели данных
 
 ## Класс LarekApi
 Этот класс расширяет базовый класс Api и добавляет специфические методы для взаимодействия с API
 
-Список методов класса LarekApi:
+### Поля класса
+- `cdn: string` - базовый URL для получения изображений.
 
-```constructor(cdnUrl: string, baseUrl: string, options?: RequestInit)```
+### Методы класса
+#### Конструктор
+```typescript
+constructor(cdnUrl: string, baseUrl: string, options?: RequestInit)
+```
+Инициализирует экземпляр класса `LarekApi` с базовым URL для API и CDN.
 
-Инициализирует экземпляр класса, устанавливая URL CDN и базовый URL API.
-```fetchProductList(): Promise<IProductItem[]>```
+#### `fetchProductList(): Promise<IProductItem[]>`
+```typescript
+fetchProductList()
+```
+Получает список продуктов из API.
 
-Получает список продуктов с сервера.
+#### `submitOrder(orderData: IOrder): Promise<IOrderResult>`
+```typescript
+submitOrder(orderData: IOrder)
+```
+Отправляет данные заказа на сервер.
 
-```submitOrder(orderData: IOrder): Promise<IOrderResult>```
+## AppState (Модель данных приложения)
 
-Отправляет заказ на сервер.
+Класс AppState является основной моделью для работы с состоянием приложения, и он содержит в себе различные свойства и методы для управления каталогом продуктов, корзиной, заказами. 
+Расширяется базовым абстрактным классом Model<T> по интерфейсу IAppState.
 
-## AppData (Модель данных приложения)
+```
+export interface IAppState {
+  catalog: IProductItem[];
+  preview: string;
+  basket: string[];
+  order: IOrder;
+  total: string | number;
+  loading: boolean;
+}
+```
 
-Описание:
+### Поля класса
+- `catalog: Product[]` - список доступных продуктов.
+- `preview: string` - ID продукта, выбранного для предпросмотра.
+- `basket: Product[]` - список продуктов, добавленных в корзину.
+- `order: IOrder` - текущие данные заказа.
+- `formErrors: FormErrors` - текущие ошибки формы.
 
-Хранит состояние приложения, управляет каталогом, корзиной и заказами.
+### Методы класса
+#### Конструктор
+```typescript
+constructor(data: Partial<IAppState>, events: EventEmitter)
+```
+Инициализирует экземпляр класса `AppData` с начальными данными и подписывает события.
 
-Методы:
-setCatalog(items: IProductItem[]): void
-Загружает список продуктов в модель.
+#### `clearBasket(): void`
+```typescript
+clearBasket()
+```
+Очищает корзину и удаляет товары из заказа.
 
-Параметры:
+#### `addToOrder(product: Product): void`
+```typescript
+addToOrder(product: Product)
+```
+Добавляет продукт в заказ.
 
-items: IProductItem[] — Массив продуктов.
+#### `removeFromOrder(product: Product): void`
+```typescript
+removeFromOrder(product: Product)
+```
+Удаляет продукт из заказа.
 
-addToOrder(product: Product): void
+#### `setCatalog(items: IProductItem[]): void`
+```typescript
+setCatalog(items: IProductItem[])
+```
+Загружает список продуктов в каталог.
 
-Добавляет продукт в список товаров заказа.
-Параметры:
+#### `setPreview(product: Product): void`
+```typescript
+setPreview(product: Product)
+```
+Устанавливает продукт для предпросмотра.
 
-product: Product — Продукт для добавления.
-clearBasket(): void
-Очищает корзину и список товаров заказа.
+#### `addProductToBasket(product: Product): void`
+```typescript
+addProductToBasket(product: Product)
+```
+Добавляет продукт в корзину.
 
-validateOrder(): boolean
-Проверяет валидность данных заказа.
-Возвращает:
+#### `removeProductFromBasket(product: Product): void`
+```typescript
+removeProductFromBasket(product: Product)
+```
+Удаляет продукт из корзины.
 
-boolean — true, если все данные валидны, иначе false.
-getTotal(): number
-Рассчитывает общую стоимость товаров в корзине.
-Возвращает:
+#### `get statusBasket(): boolean`
+```typescript
+get statusBasket()
+```
+Возвращает статус корзины (пустая или нет).
 
-number — Общая сумма.
+#### `get bskt(): Product[]`
+```typescript
+get bskt()
+```
+Возвращает текущий список продуктов в корзине.
 
-## Класс Product
+#### `set total(value: number): void`
+```typescript
+set total(value: number)
+```
+Устанавливает общую стоимость заказа.
 
-Основная функциональность класса Product
+#### `getTotal(): number`
+```typescript
+getTotal()
+```
+Возвращает общую стоимость всех продуктов в заказе.
 
-Класс описывает свойства каждого продукта, такие как идентификатор, название, описание, цена и изображение.
+#### `setOrderField(field: keyof IOrderForm, value: string): void`
+```typescript
+setOrderField(field: keyof IOrderForm, value: string)
+```
+Обновляет указанное поле в данных заказа.
 
-Интеграция с EventEmitter Класс принимает в конструкторе экземпляр EventEmitter, который позволяет объектам генерировать события для взаимодействия с другими частями приложения.
+#### `setContactsField(field: keyof IOrderForm, value: string): void`
+```typescript
+setContactsField(field: keyof IOrderForm, value: string)
+```
+Обновляет указанное поле в данных контактной формы.
 
-Управление данными С помощью конструктора объект Product наполняется данными из интерфейса IProductItem.
+#### `validateOrder(): boolean`
+```typescript
+validateOrder()
+```
+Валидация данных заказа. Возвращает `true`, если ошибок нет.
 
-Основные свойства
-id: string
-Уникальный идентификатор продукта, используется для операций с продуктом (например, добавления в корзину).
+#### `validateContacts(): boolean`
+```typescript
+validateContacts()
+```
+Валидация контактных данных. Возвращает `true`, если ошибок нет.
 
-title: string
-Название продукта, отображается в карточке товара.
+## Класс ProductItem
 
-description: string
-Описание продукта, используется в подробном просмотре продукта.
+Является моделью хранения данных товара: идентификатора, заголовка, описания, категории, изображения, цены.
+Расширяется базовым абстрактным классом Model<T> по интерфейсу IProductItem.
 
-category: string
-Категория продукта, которая может быть использована для фильтрации.
-
-image: string
-Ссылка на изображение продукта.
-
-price: number | null
-Цена продукта. Если значение null, отображается как "Бесценно".
+```
+export interface IProductItem {
+  id: string;
+  title: string;
+  description: string;
+  category: string;
+  image: string;
+  price: number | null;
+}
+```
 
 
 ## Компоненты представления
@@ -256,219 +358,328 @@ price: number | null
 ## Класс Card
 Отображает карточку товара и обрабатывает действия пользователя.
 
-Конструктор:
+```
+interface ICard {
+  title: string;
+  category: string;
+  image: string;
+  price: number;
+  text: string;
+}
+```
 
-```constructor(container: HTMLElement, actions?: ICardActions)```
+### Поля класса
+- `titleElement: HTMLElement` - элемент для отображения заголовка карточки.
+- `categoryElement: HTMLElement` - элемент для отображения категории карточки.
+- `imageElement: HTMLImageElement` - элемент для отображения изображения карточки.
+- `priceElement: HTMLElement` - элемент для отображения цены карточки.
+- `categoryMapping: Record<string, string>` - объект для сопоставления категорий с их CSS-классами.
 
-```container``` — HTML-элемент контейнера карточки.
+### Методы класса
+#### Конструктор
+```typescript
+constructor(container: HTMLElement, actions?: ICardActions)
+```
+Инициализирует экземпляр класса `Card` и настраивает обработчики событий, если они переданы.
 
-```actions``` — Обработчики событий (onSelect, onAdd, onRemove).
+#### `set title(value: string): void`
+```typescript
+set title(value: string)
+```
+Устанавливает заголовок карточки.
 
-Методы и свойства:
+#### `set category(value: string): void`
+```typescript
+set category(value: string)
+```
+Устанавливает категорию карточки и применяет соответствующий CSS-класс.
 
-```title``` — Устанавливает заголовок карточки.
+#### `set image(src: string): void`
+```typescript
+set image(src: string)
+```
+Устанавливает изображение для карточки.
 
-```category``` — Устанавливает категорию товара и соответствующий CSS-класс.
-
-```image``` — Устанавливает изображение товара.
-
-```price``` — Устанавливает цену товара.
+#### `set price(amount: number | null): void`
+```typescript
+set price(amount: number | null)
+```
+Устанавливает цену карточки. Если значение `null`, отображается "Бесценно".
 
 ## Класс CardPreview
 Класс CardPreview наследует все методы и свойства базового класса Card, что позволяет использовать их без необходимости повторного определения. 
 
-```constructor(container: HTMLElement, actions?: ICardActions)```
+### Поля класса
+- `textElement: HTMLElement` - элемент для отображения дополнительного текста.
+- `buttonElement: HTMLElement` - кнопка для добавления товара в корзину.
 
-Параметры:
+### Методы класса
+#### Конструктор
+```typescript
+constructor(container: HTMLElement, actions?: ICardActions)
+```
+Инициализирует экземпляр класса `CardPreview` и настраивает обработчики событий для кнопки добавления в корзину.
 
-```container: HTMLElement``` — контейнер карточки товара в DOM.
+#### `set text(content: string): void`
+```typescript
+set text(content: string)
+```
+Устанавливает текст описания карточки.
 
-```actions: ICardActions``` — объект, содержащий обработчики событий для карточки (onSelect, onAdd, onRemove).
-
-Методы
-
-```set text(content: string)```
-
-Описание:
-
-Сеттер для установки текста описания товара.
-Использует защищённый метод setText из родительского класса Component для обновления содержимого textElement
-
-```set addButtonEnabled(isEnabled: boolean)```
-
-Описание:
-
-Сеттер для управления доступностью кнопки добавления в корзину.
-Принимает булевый параметр isEnabled, который определяет, должна ли кнопка быть активной.
-Использует метод setDisabled из родительского класса Component для установки атрибута disabled у кнопки.
-
-
-```updateButtonState(isInBasket: boolean, isPriceless: boolean): void```
-
-Описание:
-
-Метод для обновления состояния кнопки добавления в корзину в зависимости от текущего состояния товара.
-
-```isInBasket```: указывает, находится ли товар уже в корзине.
-
-```isPriceless```: указывает, имеет ли товар цену.
-
-Логика:
-Если товар бесценен (isPriceless), кнопка отображает текст "Бесценно" и отключается.
-Если товар уже в корзине (isInBasket), кнопка отображает текст "В корзине" и отключается.
-В противном случае, кнопка отображает текст "В корзину" и становится активной.
 
 ## Класс CardBasket
 Отображает товар в корзине и позволяет его удалить.
+Поля отвечают за связь с разметкой, методы за наполнение разметки данными.
 
-Конструктор:
+### Поля класса
+- `titleElement: HTMLElement` - элемент для отображения заголовка товара.
+- `priceElement: HTMLElement` - элемент для отображения цены товара.
+- `indexElement: HTMLElement` - элемент для отображения индекса товара в корзине.
+- `deleteButton: HTMLElement` - кнопка для удаления товара из корзины.
 
-```constructor(container: HTMLElement, actions?: ICardActions)```
+### Методы класса
+#### Конструктор
+```typescript
+constructor(container: HTMLElement, actions?: ICardActions)
+```
+Инициализирует экземпляр класса `CardBasket` и настраивает обработчик удаления товара из корзины.
 
-Методы и свойства:
+#### `set title(value: string): void`
+```typescript
+set title(value: string)
+```
+Устанавливает заголовок товара в корзине.
 
-```title``` — Устанавливает заголовок товара.
-```price``` — Устанавливает цену товара.
-```index``` — Устанавливает индекс товара в списке корзины.
+#### `set price(amount: number): void`
+```typescript
+set price(amount: number)
+```
+Устанавливает цену товара в корзине.
 
-## Класс Basket
-Отображает содержимое корзины и обрабатывает действия пользователя.
+#### `set index(num: number): void`
+```typescript
+set index(num: number)
+```
+Устанавливает индекс товара в корзине.
 
-Методы:
+## Класс `Page`
+Отвечает за отображение данных составляющих элементов страницы: каталог, корзина, счетчик товаров в корзине
+Поля отвечают за связь с разметкой, методы за наполнение разметки данными, а также метод закрытия/открытия для прокрутки страницы при открытии/закрытии модального окна.
 
-```render(basket: IBasket): void```  — Отображает товары в корзине.
-```toggleCheckoutButton(isEnabled: boolean): void``` — Включает/отключает кнопку оформления заказа.
+### Поля класса
+- `catalog: HTMLElement[]` - массив DOM-элементов, представляющих товары в каталоге.
+- `basketCounterDisplay: HTMLElement` - элемент для отображения количества товаров в корзине.
+- `gallerySection: HTMLElement` - элемент секции, где отображается галерея товаров.
+- `pageWrapper: HTMLElement` - основной контейнер страницы.
+- `basketButton: HTMLElement` - кнопка для открытия корзины.
 
-События:
+### Методы класса
+#### Конструктор
+```typescript
+constructor(container: HTMLElement, private eventBus: IEvents)
+```
+Инициализирует экземпляр класса `Page` с контейнером страницы и шиной событий. Также настраивает элементы интерфейса и подписывает обработчики событий.
 
-Эмитирует ```'basket:removeItem'``` при удалении товара.
-Эмитирует ```'basket:checkout'``` при нажатии на кнопку оформления заказа.
+#### `set counter(count: number): void`
+```typescript
+set counter(count: number)
+```
+Обновляет отображение количества товаров в корзине.
 
-## Класс Order
-Форма оформления заказа.
+#### `set catalog(items: HTMLElement[]): void`
+```typescript
+set catalog(items: HTMLElement[])
+```
+Обновляет содержимое секции галереи с новыми элементами каталога.
 
-Конструктор:
-
- ```constructor(formElement: HTMLFormElement, eventBus: IEvents) ```
-
-Методы:
-
- ```render(data?: IOrderFormData): void ``` — Отображает форму заказа.
- ```getData(): IOrderFormData ```  — Возвращает данные формы.
-События:
-
-Эмитирует  ```'orderForm:submit' ``` при отправке формы.
-
-## Класс Contacts
-Форма ввода контактных данных.
-
-Конструктор:
-
- ```constructor(formElement: HTMLFormElement, eventBus: IEvents) ```
-
-Методы:
-
- ```render(data?: IContactFormData): void ``` — Отображает форму контактов.
- ```getData(): IContactFormData ``` — Возвращает данные формы.
-
-События:
-
-Эмитирует 'contactForm:submit' при отправке формы.
-
-## Класс Success
-Отображает сообщение об успешном оформлении заказа.
-
-### Методы:
-
-
-- **constructor(container: HTMLElement, actions: ISuccessActions)**
-Инициализирует компонент Success, устанавливая ссылки на необходимые DOM-элементы и добавляя обработчик события клика на кнопку закрытия сообщения об успехе.
-
-- **set total**
-set total(amount: string)
-Обновляет текстовое содержимое элемента totalElement, отображая сумму списанных средств пользователю.
+#### `set locked(isLocked: boolean): void`
+```typescript
+set locked(isLocked: boolean)
+```
+Блокирует или разблокирует интерфейс страницы, добавляя или удаляя CSS-класс `page__wrapper_locked`.
 
 ## Класс Modal
 
 Управляет модальными окнами в приложении.
 
-### Методы:
+### Поля класса
+- `content: HTMLElement | null` - содержимое модального окна.
+- `closeButton: HTMLButtonElement` - кнопка для закрытия модального окна.
+- `contentArea: HTMLElement` - область, где отображается содержимое модального окна.
 
-- **open**
-    ```typescript
-    open(): void
-    ```
-    Открывает модальное окно и генерирует событие `modal:open`.
+### Методы класса
+#### Конструктор
+```typescript
+constructor(container: HTMLElement, private eventBus: IEvents)
+```
+Инициализирует экземпляр класса `Modal` с контейнером для модального окна и шиной событий. Настраивает элементы интерфейса и подписывает обработчики событий.
 
-- **close**
-    ```typescript
-    close(): void
-    ```
-    Закрывает модальное окно, очищает содержимое и генерирует событие `modal:close`.
+#### `set content(element: HTMLElement): void`
+```typescript
+set content(element: HTMLElement)
+```
+Устанавливает содержимое модального окна.
 
-- **render**
-    ```typescript
-    render(data: IModalContent): HTMLElement
-    ```
-    Отображает переданный контент внутри модального окна и открывает его.
+#### `open(): void`
+```typescript
+open()
+```
+Открывает модальное окно, добавляя CSS-класс `modal_active`, и вызывает событие `modal:open` через шину событий.
+
+#### `close(): void`
+```typescript
+close()
+```
+Закрывает модальное окно, удаляя CSS-класс `modal_active`, очищает содержимое модального окна и вызывает событие `modal:close` через шину событий.
+
+#### `render(data: IModalContent): HTMLElement`
+```typescript
+render(data: IModalContent): HTMLElement
+```
+
+## Класс `Basket`
+Отображает содержимое корзины и обрабатывает действия пользователя.Имеет возможность удаления позиции товара из корзины.
+
+### Поля класса
+- `items: HTMLElement[]` - массив DOM-элементов, представляющих товары в корзине.
+- `totalAmount: HTMLElement` - элемент для отображения общей стоимости товаров.
+- `checkoutButton: HTMLButtonElement` - кнопка для перехода к оформлению заказа.
+
+### Методы класса
+#### Конструктор
+```typescript
+constructor(container: HTMLElement, private eventBus: EventEmitter)
+```
+Инициализирует экземпляр класса `Basket` с контейнером корзины и шиной событий. Настраивает элементы интерфейса и подписывает обработчики событий.
+
+#### `set items(elements: HTMLElement[]): void`
+```typescript
+set items(elements: HTMLElement[])
+```
+Устанавливает список товаров в корзине. Если корзина пуста, отображает сообщение "Корзина пуста".
+
+#### `set total(amount: number): void`
+```typescript
+set total(amount: number)
+```
+Обновляет отображение общей стоимости товаров в корзине с использованием форматирования числа.
+
+#### `setDisabled(button: HTMLButtonElement, isDisabled: boolean): void`
+```typescript
+setDisabled(button: HTMLButtonElement, isDisabled: boolean)
+```
+Управляет доступностью переданной кнопки, делая её активной или неактивной.
 
 
+## Класс Order
+Отвечает за отображение первого шага заказа в модальном окне.
 
+### Поля класса
+- `paymentOptions: HTMLButtonElement[]` - кнопки для выбора способа оплаты.
 
+### Методы класса
+#### Конструктор
+```typescript
+constructor(formElement: HTMLFormElement, eventBus: IEvents)
+```
+Инициализирует экземпляр класса `Order`. Настраивает кнопки выбора способа оплаты и подписывает их на события изменения.
 
-```markdown
-## Основные события
+#### `set payment(name: string): void`
+```typescript
+set payment(name: string)
+```
+Устанавливает активный способ оплаты, добавляя класс `button_alt-active` к выбранной кнопке и убирая его с остальных.
 
-### События от моделей:
+#### `set address(value: string): void`
+```typescript
+set address(value: string)
+```
+Устанавливает значение для поля адреса в форме.
 
-- **`products:loaded`**
-    - **Описание:** Генерируется после загрузки списка товаров.
-    - **Параметры:** `IProductItem[]` — массив загруженных товаров.
+#### `private updatePaymentSelection(selectedName: string): void`
+```typescript
+private updatePaymentSelection(selectedName: string)
+```
+Обновляет выбор способа оплаты и вызывает метод `set payment`.
 
-- **`basket:updated`**
-    - **Описание:** Генерируется при изменении содержимого корзины.
-    - **Параметры:** `IProductItem[]` — обновленный список товаров в корзине.
+## Класс Contacts
+Отвечает за отображение второго шага заказа в модальном окне.
 
-- **`order:validated`**
-    - **Описание:** Генерируется при успешной валидации данных заказа.
-    - **Параметры:** `IOrder` — данные заказа.
+### Методы класса
+#### Конструктор
+```typescript
+constructor(formElement: HTMLFormElement, eventBus: IEvents)
+```
+Инициализирует экземпляр класса `Contacts`.
 
-- **`order:invalid`**
-    - **Описание:** Генерируется при ошибке валидации данных заказа.
-    - **Параметры:** `FormErrors` — объект с ошибками валидации.
+#### `set phone(value: string): void`
+```typescript
+set phone(value: string)
+```
+Устанавливает значение для поля телефона в форме.
 
-- **`order:submitted`**
-    - **Описание:** Генерируется после успешной отправки заказа на сервер.
-    - **Параметры:** `IOrderResult` — результат заказа.
+#### `set email(value: string): void`
+```typescript
+set email(value: string)
+```
+Устанавливает значение для поля email в форме.
 
-### События от представлений:
+## Класс Form<T>
+Отвечает за основные способы работы с формой и ее валидацию.
 
-- **`product:selected`**
-    - **Описание:** Генерируется при выборе товара.
-    - **Параметры:** `IProductItem` — выбранный товар.
+### Поля класса
+- `formElement: HTMLFormElement` - элемент формы.
+- `submitBtn: HTMLButtonElement` - кнопка отправки формы.
+- `errorDisplay: HTMLElement` - элемент для отображения ошибок в форме.
+- `eventBus: IEvents` - объект для работы с событиями.
 
-- **`product:addToBasket`**
-    - **Описание:** Генерируется при добавлении товара в корзину.
-    - **Параметры:** `IProductItem` — добавленный товар.
+### Методы класса
+#### Конструктор
+```typescript
+constructor(formElement: HTMLFormElement, eventBus: IEvents)
+```
+Инициализирует экземпляр класса `Form` с элементом формы и шиной событий. Настраивает элементы интерфейса и подписывает обработчики событий на ввод и отправку формы.
 
-- **`basket:removeItem`**
-    - **Описание:** Генерируется при удалении товара из корзины.
-    - **Параметры:** `IProductItem` — удаленный товар.
+#### `private handleInputChange(field: keyof T, value: string): void`
+```typescript
+private handleInputChange(field: keyof T, value: string)
+```
+Обрабатывает изменения в полях формы и вызывает событие изменения значения через шину событий.
 
-- **`basket:checkout`**
-    - **Описание:** Генерируется при переходе к оформлению заказа.
-    - **Параметры:** `IOrderForm` — данные заказа.
+#### `set valid(isValid: boolean): void`
+```typescript
+set valid(isValid: boolean)
+```
+Управляет доступностью кнопки отправки формы в зависимости от валидности данных формы.
 
-- **`orderForm:submit`**
-    - **Описание:** Генерируется при отправке формы заказа.
-    - **Параметры:** `IOrderForm` — данные формы заказа.
+#### `set errors(message: string): void`
+```typescript
+set errors(message: string)
+```
+Отображает сообщение об ошибке в элементе для ошибок формы.
 
-- **`contactForm:submit`**
-    - **Описание:** Генерируется при отправке формы контактных данных.
-    - **Параметры:** `IOrderForm` — данные контактной формы.
+#### `render(state: Partial<T> & IFormState): HTMLElement`
+```typescript
+render(state: Partial<T> & IFormState): HTMLElement
+```
+Рендерит состояние формы, обновляя валидность, ошибки и другие параметры.
 
-- **`basket:open`**
-    - **Описание:** Генерируется при открытии корзины.
+## Класс Success
+Отображает сообщение об успешном оформлении заказа.
 
-- **`modal:opened`** и **`modal:closed`**
-    - **Описание:** Генерируются при открытии и закрытии модального окна соответственно.
+### Поля класса
+- `totalElement: HTMLElement` - элемент для отображения суммы списания.
+- `closeBtn: HTMLElement` - кнопка для закрытия сообщения об успешном оформлении.
+
+### Методы класса
+#### Конструктор
+```typescript
+constructor(container: HTMLElement, actions: ISuccessActions)
+```
+Инициализирует экземпляр класса `Success` с контейнером и действиями. Настраивает элементы интерфейса и подписывает обработчик события на кнопку закрытия.
+
+#### `set total(amount: string): void`
+```typescript
+set total(amount: string)
+```
+Устанавливает сумму списания и обновляет текст в элементе `totalElement`.

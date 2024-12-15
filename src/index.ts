@@ -4,7 +4,7 @@ import { EventEmitter } from './components/base/events';
 import { API_URL, CDN_URL } from './utils/constants';
 import { LarekApi } from './components/LarekApi';
 import { cloneTemplate, ensureElement } from './utils/utils';
-import { AppData, Product } from './components/Appdata';
+import { AppData, Product } from './components/AppData';
 import { Page } from './components/Page';
 import { Card, CardBasket, CardPreview } from './components/Card';
 import { Modal } from './components/common/Modal';
@@ -51,7 +51,6 @@ const contactForm = new Contacts(
 	cloneTemplate<HTMLFormElement>(contactsTemplate),
 	eventEmitter
 );
-
 
 // Обновление каталога товаров
 eventEmitter.on('items:changed', () => {

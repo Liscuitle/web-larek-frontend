@@ -6,7 +6,7 @@ import {
 	IProductItem,
 } from '../types';
 import { Model } from './base/Model';
-import { EventEmitter, IEvents } from './base/events'; 
+import { EventEmitter, IEvents } from './base/events';
 
 export class AppData extends Model<IAppState> {
 	catalog: Product[] = [];
@@ -83,15 +83,15 @@ export class AppData extends Model<IAppState> {
 	}
 
 	setOrderField(field: keyof IOrderForm, value: string) {
-		this.order[field] = value as never; 
-		
+		this.order[field] = value as never;
+
 		if (this.validateOrder()) {
 			this.events.emit('order:ready', this.order);
 		}
 	}
 
 	setContactsField(field: keyof IOrderForm, value: string) {
-		this.order[field] = value as never; 
+		this.order[field] = value as never;
 
 		if (this.validateContacts()) {
 			this.events.emit('order:ready', this.order);
@@ -144,4 +144,3 @@ export class Product extends Model<IProductItem> {
 		this.price = data.price;
 	}
 }
-
