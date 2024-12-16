@@ -68,10 +68,6 @@ export class Card extends Component<ICardProps> {
 	}
 }
 
-interface ICardPreviewProps extends ICardProps {
-	text: string;
-}
-
 export class CardPreview extends Card {
 	private textElement: HTMLElement;
 	private buttonElement: HTMLElement;

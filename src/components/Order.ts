@@ -1,7 +1,12 @@
 import { IOrderForm } from '../types';
-import { ensureAllElements } from '../utils/utils';
 import { IEvents } from './base/events';
 import { Form } from './common/Form';
+import { ensureAllElements } from '../utils/utils';
+
+interface IFormState {
+	valid: boolean;
+	errors: string[];
+}
 
 export class Order extends Form<IOrderForm> {
 	private paymentOptions: HTMLButtonElement[];
@@ -44,27 +49,14 @@ export class Order extends Form<IOrderForm> {
 	private updatePaymentSelection(selectedName: string) {
 		this.payment = selectedName;
 	}
-}
-export class Contacts extends Form<IOrderForm> {
-	constructor(formElement: HTMLFormElement, eventBus: IEvents) {
-		super(formElement, eventBus);
-	}
 
-	set phone(value: string) {
-		const phoneInput = this.formElement.elements.namedItem(
-			'phone'
-		) as HTMLInputElement;
-		if (phoneInput) {
-			phoneInput.value = value;
+	render(data: Partial<IOrderForm> & IFormState): HTMLElement {
+		this.address = data.address || '';
+		if (data.payment) {
+			this.payment = data.payment;
 		}
-	}
-
-	set email(value: string) {
-		const emailInput = this.formElement.elements.namedItem(
-			'email'
-		) as HTMLInputElement;
-		if (emailInput) {
-			emailInput.value = value;
-		}
+		this.valid = data.valid;
+		this.errors = data.errors.join('; ');
+		return this.formElement;
 	}
 }

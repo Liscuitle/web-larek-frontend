@@ -219,18 +219,6 @@ submitOrder(orderData: IOrder)
 ## AppState (Модель данных приложения)
 
 Класс AppState является основной моделью для работы с состоянием приложения, и он содержит в себе различные свойства и методы для управления каталогом продуктов, корзиной, заказами. 
-Расширяется базовым абстрактным классом Model<T> по интерфейсу IAppState.
-
-```
-export interface IAppState {
-  catalog: IProductItem[];
-  preview: string;
-  basket: string[];
-  order: IOrder;
-  total: string | number;
-  loading: boolean;
-}
-```
 
 ### Поля класса
 - `catalog: Product[]` - список доступных продуктов.
