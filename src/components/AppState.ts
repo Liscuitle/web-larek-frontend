@@ -26,7 +26,6 @@ export class AppState extends Model<{}> {
 		super(data, events);
 	}
 
-	// Геттеры
 	public get catalog(): IProductItem[] {
 		return this._catalog;
 	}
@@ -47,13 +46,11 @@ export class AppState extends Model<{}> {
 		return this._basket;
 	}
 
-	// Устанавливает общую стоимость заказа
 	public set total(value: number) {
 		this._order.total = value;
 		this.emitChanges('order:totalUpdated', { total: value });
 	}
 
-	// Рассчитывает общую стоимость товаров в корзине
 	public getTotal(): number {
 		return this._order.items.reduce((total, id) => {
 			const product = this._catalog.find((prod) => prod.id === id);
@@ -61,20 +58,18 @@ export class AppState extends Model<{}> {
 		}, 0);
 	}
 
-	// Очищает корзину и список товаров в заказе
 	public clearBasket(): void {
 		this._basket = [];
 		this._order.items = [];
 		this.emitChanges('basket:cleared', {});
+		this.emitChanges('basket:updated', { basket: this._basket });
 	}
 
-	// Добавляет продукт в заказ по ID
 	public addToOrder(product: IProductItem): void {
 		this._order.items.push(product.id);
 		this.emitChanges('order:itemAdded', { id: product.id });
 	}
 
-	// Удаляет продукт из заказа по ID
 	public removeFromOrder(product: IProductItem): void {
 		const index = this._order.items.indexOf(product.id);
 		if (index !== -1) {
@@ -83,42 +78,36 @@ export class AppState extends Model<{}> {
 		}
 	}
 
-	// Устанавливает каталог продуктов и генерирует событие обновления
 	public setCatalog(items: IProductItem[]): void {
 		this._catalog = items;
 		this.emitChanges('catalog:updated', { catalog: this._catalog });
 	}
 
-	// Устанавливает выбранный продукт для предпросмотра
 	public setPreview(product: IProductItem): void {
 		this._preview = product.id;
 		this.emitChanges('preview:updated', { product });
 	}
 
-	// Добавляет продукт в корзину, если его ещё нет
 	public addProductToBasket(product: IProductItem): void {
 		if (!this._basket.find((item) => item.id === product.id)) {
 			this._basket.push(product);
-			this.emitChanges('basket:itemAdded', { product });
+			this.emitChanges('basket:updated', { basket: this._basket });
 		}
 	}
 
-	// Удаляет продукт из корзины
 	public removeProductFromBasket(product: IProductItem): void {
 		const index = this._basket.findIndex((item) => item.id === product.id);
 		if (index !== -1) {
 			this._basket.splice(index, 1);
-			this.emitChanges('basket:itemRemoved', { product });
+			this.emitChanges('basket:updated', { basket: this._basket });
 		}
 	}
 
-	// Устанавливает способ оплаты
 	public setOrderPayment(paymentMethod: string): void {
 		this._order.payment = paymentMethod;
 		this.emitChanges('order:paymentUpdated', { payment: paymentMethod });
 	}
 
-	// Устанавливает поле заказа и проверяет валидность
 	public setOrderField(field: keyof IOrderForm, value: string): void {
 		this._order[field] = value as never;
 
@@ -127,7 +116,6 @@ export class AppState extends Model<{}> {
 		}
 	}
 
-	// Устанавливает контактное поле и проверяет валидность
 	public setContactsField(field: keyof IContactsForm, value: string): void {
 		if (field === 'phone') {
 			this._order.phone = value;
@@ -140,7 +128,6 @@ export class AppState extends Model<{}> {
 		}
 	}
 
-	// Валидирует поля заказа
 	public validateOrder(): boolean {
 		const errors: FormErrors = {};
 
@@ -157,7 +144,6 @@ export class AppState extends Model<{}> {
 		return Object.keys(errors).length === 0;
 	}
 
-	// Валидирует контактные поля
 	public validateContacts(): boolean {
 		const errors: FormErrors = {};
 

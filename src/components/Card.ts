@@ -13,6 +13,7 @@ interface ICardProps {
 	image: string;
 	price: number;
 	text?: string;
+	index?: number;
 }
 
 export class Card extends Component<ICardProps> {
@@ -74,15 +75,14 @@ export class CardPreview extends Card {
 
 	constructor(container: HTMLElement, actions?: ICardActions) {
 		super(container, {
-			onSelect: actions?.onSelect, 
+			onSelect: actions?.onSelect,
 		});
 		this.textElement = ensureElement<HTMLElement>('.card__text', container);
 		this.buttonElement = ensureElement<HTMLElement>('.card__button', container);
 
-		
 		if (actions?.onAdd) {
 			this.buttonElement.addEventListener('click', (event: MouseEvent) => {
-				event.stopPropagation(); 
+				event.stopPropagation();
 				actions.onAdd(event);
 			});
 		}
@@ -99,16 +99,15 @@ interface ICardBasketProps {
 	index: number;
 }
 
-export class CardBasket extends Component<ICardBasketProps> {
-	private titleElement: HTMLElement;
-	private priceElement: HTMLElement;
+export class CardBasket extends Card {
 	private indexElement: HTMLElement;
 	private deleteButton: HTMLElement;
 
 	constructor(container: HTMLElement, actions?: ICardActions) {
-		super(container);
-		this.titleElement = ensureElement<HTMLElement>('.card__title', container);
-		this.priceElement = ensureElement<HTMLElement>('.card__price', container);
+		super(container, {
+			onSelect: actions?.onSelect,
+			onRemove: actions?.onRemove,
+		});
 		this.indexElement = ensureElement<HTMLElement>(
 			'.basket__item-index',
 			container
@@ -121,14 +120,6 @@ export class CardBasket extends Component<ICardBasketProps> {
 		if (actions?.onRemove) {
 			this.deleteButton.addEventListener('click', actions.onRemove);
 		}
-	}
-
-	set title(value: string) {
-		this.setText(this.titleElement, value);
-	}
-
-	set price(amount: number) {
-		this.setText(this.priceElement, `${amount} синапсов`);
 	}
 
 	set index(num: number) {

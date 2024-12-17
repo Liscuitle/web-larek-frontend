@@ -27,3 +27,12 @@ export interface IProductItem {
 	price: number;
 	description: string;
 }
+
+export interface ICombinedFormErrors
+	extends Partial<IOrder>,
+		Partial<IContactsForm> {}
+
+export interface IFormState {
+	valid: boolean;
+	errors: string[];
+}

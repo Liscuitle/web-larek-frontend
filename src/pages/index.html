@@ -4,7 +4,7 @@
 	<meta charset="utf-8">
 	<meta name="viewport" content="width=device-width, initial-scale=1">
 	<meta name="theme-color" content="#000000" />
-  <link rel="icon" href="/favicon.ico" />
+	<link rel="icon" href="/favicon.ico" />
 	<link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
 	<link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
 	<link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
@@ -33,9 +33,7 @@
 	<div class="modal" id="modal-container">
 		<div class="modal__container">
 			<button class="modal__close" aria-label="закрыть"></button>
-			<div class="modal__content">
-
-			</div>
+			<div class="modal__content"></div>
 		</div>
 	</div>
 
@@ -86,7 +84,7 @@
 						</li>
 					</ul>
 					<div class="modal__actions">
-						<button class="button">Оформить</button>
+							<button class="button basket__button">Оформить</button>
 						<span class="basket__price">153 250 синапсов</span>
 					</div>
 				</div>
@@ -190,6 +188,9 @@
 
 	<template id="card-basket">
 		<li class="basket__item card card_compact">
+			<span class="card__category" style="display:none;"></span>
+			<img class="card__image" style="display:none;" alt=""/>
+			
 			<span class="basket__item-index">1</span>
 			<span class="card__title">Фреймворк куки судьбы</span>
 			<span class="card__price">2500 синапсов</span>

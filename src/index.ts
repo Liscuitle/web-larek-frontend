@@ -16,21 +16,14 @@ import {
 	IOrderResult,
 	IProductItem,
 	IContactsForm,
-	IOrder,
+	ICombinedFormErrors,
+	IFormState,
 } from './types';
-
-// Интерфейсы для ошибок форм
-interface ICombinedFormErrors extends Partial<IOrder>, Partial<IContactsForm> {}
-
-interface IFormState {
-	valid: boolean;
-	errors: string[];
-}
 
 const eventEmitter = new EventEmitter();
 const apiService = new LarekApi(CDN_URL, API_URL);
 
-// Логирование событий
+// Логирование всех событий
 eventEmitter.onAll(({ eventName, data }) => {
 	console.log(eventName, data);
 });
@@ -68,6 +61,12 @@ const contactForm = new Contacts(
 	eventEmitter
 );
 
+const successMessage = new Success(cloneTemplate(successTemplate), {
+	onClick: () => {
+		modalWindow.close();
+	},
+});
+
 // Обновление каталога
 eventEmitter.on('catalog:updated', () => {
 	console.log('Updating catalog with:', applicationData.catalog);
@@ -94,15 +93,34 @@ eventEmitter.on('card:select', (selectedProduct: IProductItem) => {
 });
 
 // Обновление превью выбранного товара
-// Изменяем событие с 'preview:changed' на 'preview:updated' и деструктурируем { product }
 eventEmitter.on('preview:updated', ({ product }: { product: IProductItem }) => {
 	console.log('Preview changed:', product);
+	const inBasket = !!applicationData.basket.find(
+		(item) => item.id === product.id
+	);
+
 	const previewCard = new CardPreview(cloneTemplate(previewCardTemplate), {
-		onAdd: () => eventEmitter.emit('card:add', product),
+		onAdd: () => {
+			if (!product.price || product.price <= 0) {
+				alert('Этот товар нельзя добавить в корзину, у него нет цены.');
+				return;
+			}
+
+			if (inBasket) {
+				applicationData.removeProductFromBasket(product);
+				applicationData.removeFromOrder(product);
+			} else {
+				applicationData.addToOrder(product);
+				applicationData.addProductToBasket(product);
+			}
+			modalWindow.close();
+		},
 		onSelect: () => eventEmitter.emit('card:select', product),
 	});
 
-	modalWindow.render({
+	const buttonText = inBasket ? 'Удалить из корзины' : 'В корзину';
+
+	const renderedContent = modalWindow.render({
 		content: previewCard.render({
 			title: product.title,
 			image: apiService.cdn + product.image,
@@ -111,27 +129,50 @@ eventEmitter.on('preview:updated', ({ product }: { product: IProductItem }) => {
 			category: product.category,
 		}),
 	});
+
+	const button = renderedContent.querySelector('.card__button') as HTMLButtonElement | null;
+	if (button) {
+		button.textContent = buttonText;
+		// Если товар бесценный - выключаем кнопку
+		if (!product.price || product.price <= 0) {
+			button.disabled = true;
+			console.log(`Button for product "${product.title}" disabled due to no price.`);
+		} else {
+			button.disabled = false;
+		}
+	}
 });
 
 // Добавление в корзину
 eventEmitter.on('card:add', (addedProduct: IProductItem) => {
 	console.log('Adding product to basket:', addedProduct);
+	if (!addedProduct.price || addedProduct.price <= 0) {
+		alert('Этот товар нельзя добавить в корзину, у него нет цены.');
+		return;
+	}
 	applicationData.addToOrder(addedProduct);
 	applicationData.addProductToBasket(addedProduct);
-	mainPage.counter = applicationData.basket.length;
 	modalWindow.close();
 });
 
-// Открытие корзины
-eventEmitter.on('basket:open', () => {
-	console.log('Opening basket');
+// Обновление интерфейса при изменении корзины
+eventEmitter.on('basket:updated', ({ basket }: { basket: IProductItem[] }) => {
+	// Обновляем счётчик
+	mainPage.counter = basket.length;
+	console.log(`Basket updated. Number of items: ${basket.length}`);
+
+	// Обновляем состояние корзины и кнопку оформления
+	const isBasketEmpty = basket.length === 0;
+	console.log(`Is basket empty: ${isBasketEmpty}`);
 	shoppingBasket.setDisabled(
 		shoppingBasket.checkoutButton,
-		applicationData.isBasketEmpty
+		isBasketEmpty
 	);
 	shoppingBasket.total = applicationData.getTotal();
+	console.log(`Total amount: ${shoppingBasket.total}`);
+
 	let index = 1;
-	shoppingBasket.items = applicationData.basket.map((product: IProductItem) => {
+	shoppingBasket.items = basket.map((product: IProductItem) => {
 		const basketItem = new CardBasket(cloneTemplate(basketCardTemplate), {
 			onRemove: () => eventEmitter.emit('card:remove', product),
 		});
@@ -141,6 +182,11 @@ eventEmitter.on('basket:open', () => {
 			index: index++,
 		});
 	});
+});
+
+// Открытие корзины
+eventEmitter.on('basket:open', () => {
+	console.log('Opening basket');
 	modalWindow.render({ content: shoppingBasket.render() });
 });
 
@@ -149,60 +195,33 @@ eventEmitter.on('card:remove', (removedProduct: IProductItem) => {
 	console.log('Removing product from basket:', removedProduct);
 	applicationData.removeProductFromBasket(removedProduct);
 	applicationData.removeFromOrder(removedProduct);
-	mainPage.counter = applicationData.basket.length;
-	shoppingBasket.setDisabled(
-		shoppingBasket.checkoutButton,
-		applicationData.isBasketEmpty
-	);
-	shoppingBasket.total = applicationData.getTotal();
-	let index = 1;
-	shoppingBasket.items = applicationData.basket.map((product: IProductItem) => {
-		const basketItem = new CardBasket(cloneTemplate(basketCardTemplate), {
-			onRemove: () => eventEmitter.emit('card:remove', product),
-		});
-		return basketItem.render({
-			title: product.title,
-			price: product.price || 0,
-			index: index++,
-		});
-	});
-	modalWindow.render({ content: shoppingBasket.render() });
 });
 
 // Обработка изменений валидации формы
-eventEmitter.on(
-	'formErrors:change',
-	(errors: ICombinedFormErrors & IFormState) => {
-		console.log('Form errors changed:', errors);
-		const { email, phone, address, payment } = errors;
-		orderForm.valid = !address && !payment;
-		contactForm.valid = !email && !phone;
-		orderForm.errors = Object.values({ address, payment })
-			.filter(Boolean)
-			.join('; ');
-		contactForm.errors = Object.values({ phone, email })
-			.filter(Boolean)
-			.join('; ');
-	}
-);
+eventEmitter.on('formErrors:change', (errors: ICombinedFormErrors & IFormState) => {
+	console.log('Form errors changed:', errors);
+	const { email, phone, address, payment } = errors;
+	orderForm.valid = !address && !payment;
+	contactForm.valid = !email && !phone;
+	orderForm.errors = Object.values({ address, payment })
+		.filter(Boolean)
+		.join('; ');
+	contactForm.errors = Object.values({ phone, email })
+		.filter(Boolean)
+		.join('; ');
+});
 
 // Изменения в контактной форме
-eventEmitter.on(
-	/^contacts\..*:change/,
-	(data: { field: keyof IContactsForm; value: string }) => {
-		console.log('Contacts field changed:', data);
-		applicationData.setContactsField(data.field, data.value);
-	}
-);
+eventEmitter.on(/^contacts\..*:change/, (data: { field: keyof IContactsForm; value: string }) => {
+	console.log('Contacts field changed:', data);
+	applicationData.setContactsField(data.field, data.value);
+});
 
 // Изменения в форме заказа
-eventEmitter.on(
-	/^order\..*:change/,
-	(data: { field: keyof IOrderForm; value: string }) => {
-		console.log('Order field changed:', data);
-		applicationData.setOrderField(data.field, data.value);
-	}
-);
+eventEmitter.on(/^order\..*:change/, (data: { field: keyof IOrderForm; value: string }) => {
+	console.log('Order field changed:', data);
+	applicationData.setOrderField(data.field, data.value);
+});
 
 // Выбор способа оплаты
 eventEmitter.on('payment:change', (buttonElement: HTMLButtonElement) => {
@@ -244,22 +263,26 @@ eventEmitter.on('contacts:submit', () => {
 		.submitOrder(applicationData.order)
 		.then((response: IOrderResult) => {
 			console.log('Order submitted:', applicationData.order);
-			const successMessage = new Success(cloneTemplate(successTemplate), {
-				onClick: () => {
-					modalWindow.close();
-					applicationData.clearBasket();
-					mainPage.counter = applicationData.basket.length;
-				},
-			});
-
+			const total = applicationData.getTotal();
+			applicationData.clearBasket();
 			modalWindow.render({
 				content: successMessage.render({
-					total: applicationData.getTotal(),
+					total: total,
 				}),
 			});
 		})
 		.catch((error: unknown) => {
 			console.error(error);
+			modalWindow.render({
+				content: contactForm.render({
+					email: applicationData.order.email || '',
+					phone: applicationData.order.phone || '',
+					valid: false,
+					errors: [
+						'Произошла ошибка при отправке, проверьте данные и попробуйте снова',
+					],
+				}),
+			});
 		});
 });
 
