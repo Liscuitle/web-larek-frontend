@@ -108,9 +108,7 @@ eventEmitter.on('preview:updated', ({ product }: { product: IProductItem }) => {
 
 			if (inBasket) {
 				applicationData.removeProductFromBasket(product);
-				// applicationData.removeFromOrder(product); // Удалить эту строку
 			} else {
-				// applicationData.addToOrder(product); // Удалить эту строку
 				applicationData.addProductToBasket(product);
 			}
 			modalWindow.close();
@@ -154,7 +152,6 @@ eventEmitter.on('card:add', (addedProduct: IProductItem) => {
 		alert('Этот товар нельзя добавить в корзину, у него нет цены.');
 		return;
 	}
-	// applicationData.addToOrder(addedProduct); // Удалить эту строку
 	applicationData.addProductToBasket(addedProduct);
 	modalWindow.close();
 });
@@ -195,7 +192,6 @@ eventEmitter.on('basket:open', () => {
 eventEmitter.on('card:remove', (removedProduct: IProductItem) => {
 	console.log('Removing product from basket:', removedProduct);
 	applicationData.removeProductFromBasket(removedProduct);
-	// applicationData.removeFromOrder(removedProduct); // Удалить эту строку
 });
 
 // Обработка изменений валидации формы
@@ -255,7 +251,6 @@ eventEmitter.on('order:open', () => {
 // Отправка формы заказа
 eventEmitter.on('order:submit', () => {
 	console.log('Submitting order form');
-	// applicationData.order.total = applicationData.getTotal(); // Удалить эту строку
 	const order = applicationData.createOrder();
 	if (!order) {
 		alert(
