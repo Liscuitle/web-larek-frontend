@@ -108,9 +108,9 @@ eventEmitter.on('preview:updated', ({ product }: { product: IProductItem }) => {
 
 			if (inBasket) {
 				applicationData.removeProductFromBasket(product);
-				applicationData.removeFromOrder(product);
+				// applicationData.removeFromOrder(product); // Удалить эту строку
 			} else {
-				applicationData.addToOrder(product);
+				// applicationData.addToOrder(product); // Удалить эту строку
 				applicationData.addProductToBasket(product);
 			}
 			modalWindow.close();
@@ -130,13 +130,17 @@ eventEmitter.on('preview:updated', ({ product }: { product: IProductItem }) => {
 		}),
 	});
 
-	const button = renderedContent.querySelector('.card__button') as HTMLButtonElement | null;
+	const button = renderedContent.querySelector(
+		'.card__button'
+	) as HTMLButtonElement | null;
 	if (button) {
 		button.textContent = buttonText;
 		// Если товар бесценный - выключаем кнопку
 		if (!product.price || product.price <= 0) {
 			button.disabled = true;
-			console.log(`Button for product "${product.title}" disabled due to no price.`);
+			console.log(
+				`Button for product "${product.title}" disabled due to no price.`
+			);
 		} else {
 			button.disabled = false;
 		}
@@ -150,7 +154,7 @@ eventEmitter.on('card:add', (addedProduct: IProductItem) => {
 		alert('Этот товар нельзя добавить в корзину, у него нет цены.');
 		return;
 	}
-	applicationData.addToOrder(addedProduct);
+	// applicationData.addToOrder(addedProduct); // Удалить эту строку
 	applicationData.addProductToBasket(addedProduct);
 	modalWindow.close();
 });
@@ -164,10 +168,7 @@ eventEmitter.on('basket:updated', ({ basket }: { basket: IProductItem[] }) => {
 	// Обновляем состояние корзины и кнопку оформления
 	const isBasketEmpty = basket.length === 0;
 	console.log(`Is basket empty: ${isBasketEmpty}`);
-	shoppingBasket.setDisabled(
-		shoppingBasket.checkoutButton,
-		isBasketEmpty
-	);
+	shoppingBasket.setDisabled(shoppingBasket.checkoutButton, isBasketEmpty);
 	shoppingBasket.total = applicationData.getTotal();
 	console.log(`Total amount: ${shoppingBasket.total}`);
 
@@ -194,34 +195,43 @@ eventEmitter.on('basket:open', () => {
 eventEmitter.on('card:remove', (removedProduct: IProductItem) => {
 	console.log('Removing product from basket:', removedProduct);
 	applicationData.removeProductFromBasket(removedProduct);
-	applicationData.removeFromOrder(removedProduct);
+	// applicationData.removeFromOrder(removedProduct); // Удалить эту строку
 });
 
 // Обработка изменений валидации формы
-eventEmitter.on('formErrors:change', (errors: ICombinedFormErrors & IFormState) => {
-	console.log('Form errors changed:', errors);
-	const { email, phone, address, payment } = errors;
-	orderForm.valid = !address && !payment;
-	contactForm.valid = !email && !phone;
-	orderForm.errors = Object.values({ address, payment })
-		.filter(Boolean)
-		.join('; ');
-	contactForm.errors = Object.values({ phone, email })
-		.filter(Boolean)
-		.join('; ');
-});
+eventEmitter.on(
+	'formErrors:change',
+	(errors: ICombinedFormErrors & IFormState) => {
+		console.log('Form errors changed:', errors);
+		const { email, phone, address, payment } = errors;
+		orderForm.valid = !address && !payment;
+		contactForm.valid = !email && !phone;
+		orderForm.errors = Object.values({ address, payment })
+			.filter(Boolean)
+			.join('; ');
+		contactForm.errors = Object.values({ phone, email })
+			.filter(Boolean)
+			.join('; ');
+	}
+);
 
 // Изменения в контактной форме
-eventEmitter.on(/^contacts\..*:change/, (data: { field: keyof IContactsForm; value: string }) => {
-	console.log('Contacts field changed:', data);
-	applicationData.setContactsField(data.field, data.value);
-});
+eventEmitter.on(
+	/^contacts\..*:change/,
+	(data: { field: keyof IContactsForm; value: string }) => {
+		console.log('Contacts field changed:', data);
+		applicationData.setContactsField(data.field, data.value);
+	}
+);
 
 // Изменения в форме заказа
-eventEmitter.on(/^order\..*:change/, (data: { field: keyof IOrderForm; value: string }) => {
-	console.log('Order field changed:', data);
-	applicationData.setOrderField(data.field, data.value);
-});
+eventEmitter.on(
+	/^order\..*:change/,
+	(data: { field: keyof IOrderForm; value: string }) => {
+		console.log('Order field changed:', data);
+		applicationData.setOrderField(data.field, data.value);
+	}
+);
 
 // Выбор способа оплаты
 eventEmitter.on('payment:change', (buttonElement: HTMLButtonElement) => {
@@ -245,7 +255,14 @@ eventEmitter.on('order:open', () => {
 // Отправка формы заказа
 eventEmitter.on('order:submit', () => {
 	console.log('Submitting order form');
-	applicationData.order.total = applicationData.getTotal();
+	// applicationData.order.total = applicationData.getTotal(); // Удалить эту строку
+	const order = applicationData.createOrder();
+	if (!order) {
+		alert(
+			'Невозможно создать заказ. Проверьте заполнение формы и наличие товаров в корзине.'
+		);
+		return;
+	}
 	modalWindow.render({
 		content: contactForm.render({
 			email: '',
@@ -259,10 +276,19 @@ eventEmitter.on('order:submit', () => {
 // Отправка контактной формы
 eventEmitter.on('contacts:submit', () => {
 	console.log('Submitting contacts form');
+	const order = applicationData.createOrder();
+
+	if (!order) {
+		alert(
+			'Невозможно создать заказ. Проверьте заполнение формы и наличие товаров в корзине.'
+		);
+		return;
+	}
+
 	apiService
-		.submitOrder(applicationData.order)
+		.submitOrder(order)
 		.then((response: IOrderResult) => {
-			console.log('Order submitted:', applicationData.order);
+			console.log('Order submitted:', order);
 			const total = applicationData.getTotal();
 			applicationData.clearBasket();
 			modalWindow.render({
